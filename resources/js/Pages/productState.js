@@ -1,12 +1,15 @@
 import { reactive } from "vue";
 
 const state = reactive({
-    products: [],
-    name: '',
+    products: [
+        {
+            name: '',
+            quantity: null,
+            price: null,
+        }
+    ],
     loading: false,
     error: null,
-    quantity: null,
-    price: null,
     errors: {}
 });
 

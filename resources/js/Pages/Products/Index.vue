@@ -33,28 +33,42 @@
                                     <th></th>
                                 </tr>
                                 </thead>
+
                                 <tbody>
-                                <tr v-for="(invoice_product, k) in state.products" :key="k">
-                                    <td>
-                                        <input class="form-control" type="text" v-model="invoice_product.name" />
-                                        <span v-if="invoice_product.error && invoice_product.error.name" class="text-red-500">{{ invoice_product.error.name }}</span>
-                                    </td>
-                                    <td>
-                                        <input class="form-control" type="number" v-model="invoice_product.quantity" />
-                                        <span v-if="invoice_product.error && invoice_product.error.quantity" class="text-red-500">{{ invoice_product.error.quantity }}</span>
+                                    <tr v-for="(newProduct, index) in newProducts" :key="index">
+                                        <td>
+                                            <input class="form-control" type="text" v-model="newProduct.name" />
+                                        </td>
+                                        <td>
+                                            <input class="form-control" type="number" v-model="newProduct.quantity" />
+                                        </td>
+                                        <td>
+                                            <input class="form-control text-right" type="number" min="0" step=".01" v-model="newProduct.price" />
+                                        </td>
+                                        <td></td>
+                                    </tr>
 
-                                    </td>
-                                    <td>
-                                        <input class="form-control text-right" type="number" min="0" step=".01" v-model="invoice_product.price" />
-                                        <span v-if="invoice_product.error && invoice_product.error.price" class="text-red-500">{{ invoice_product.error.price }}</span>
+                                    <tr v-for="(product, k) in state.products" :key="product">
+                                        <td>
+                                            <input class="form-control" type="text" v-model="product.name" />
+                                            <span v-if="product.error && product.error.name" class="text-red-500">{{ product.error.name }}</span>
+                                        </td>
+                                        <td>
+                                            <input class="form-control" type="number" v-model="product.quantity" />
+                                            <span v-if="product.error && product.error.quantity" class="text-red-500">{{ product.error.quantity }}</span>
 
-                                    </td>
-                                    <td>
-                                    </td>
-                                    <td>
-                                        <button @click="deleteRow(k)" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Удалить</button>
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td>
+                                            <input class="form-control text-right" type="number" min="0" step=".01" v-model="product.price" />
+                                            <span v-if="product.error && product.error.price" class="text-red-500">{{ product.error.price }}</span>
+
+                                        </td>
+                                        <td>
+                                        </td>
+                                        <td>
+                                            <button @click="deleteRow(k)" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Удалить</button>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                             <div class="flex justify-center mt-4">
@@ -87,45 +101,58 @@ export default {
             showInputs: false,
             state: state,
             saveSuccess: false,
-            name: '',
-            quantity: null,
-            price: null,
+            newProducts: [],
             validationError: false,
+            apiUrl: 'http://localhost:8000'
         }
     },
+    // setup() {
+    //     const apiUrl = inject('apiUrl');
+    //     return {
+    //         apiUrl,
+    //         state
+    //     }
+    // },
 
-    setup() {
-        const apiUrl = inject('apiUrl');
-        return {
-            apiUrl,
-            state
-        }
-    },
     methods: {
         async saveData() {
-                try {
-                    const requestData = this.state.products.map(product => ({
+            try {
+                if (this.state.products.length === 0) {
+                    this.validationError = true;
+                    return;
+                }
+
+                const isValid = this.validateData();
+                if (!isValid) {
+                    this.validationError = true;
+                    return;
+                }
+
+                for (const product of this.state.products) {
+                    await axios.post(`${this.apiUrl}/products`, {
                         name: product.name,
                         quantity: product.quantity,
                         price: product.price
-                    }));
-
-                    await axios.post(`${this.apiUrl}/products`, requestData);
-
-                    this.saveSuccess = true;
-                    this.showInputs = false;
-                    this.clearInputs();
-                    this.fetchProducts();
-                } catch (error) {
-                    if (error.response && error.response.status === 422) {
-                        console.log('Validation errors:', error.response.data.errors);
-                    } else {
-                        console.error('Error saving data: ', error);
-                    }
+                    });
                 }
 
+                    this.newProducts.push(...this.state.products);
 
+
+                this.clearInputs();
+
+                this.saveSuccess = true;
+                this.validationError = false;
+
+                this.showInputs = false;
+                setTimeout(() => {
+                    this.saveSuccess = false;
+                }, 3000);
+            } catch (error) {
+                console.error('Error saving data: ', error);
+            }
         },
+
         deleteRow(index) {
             this.state.products.splice(index, 1);
         },
@@ -136,6 +163,7 @@ export default {
                 quantity: null,
                 price: null
             });
+            this.saveSuccess = false;
         },
         validateData() {
             let isValid = true;
@@ -157,22 +185,11 @@ export default {
             }
             return isValid;
         },
-        async fetchProducts() {
-            this.state.loading = true;
 
-            try {
-                const response = await axios.get(`${this.apiUrl}/products`);
-                this.state.products = response.data;
-                console.log(this.state.products);
-            } catch (error) {
-                console.error('Error fetching products: ', error);
-            }
-
-        },
         async cancelProduct(productId) {
             try {
                 await axios.delete(`${this.apiUrl}/products/${productId}`);
-                this.fetchProducts();
+                await this.fetchProducts();
                 if (this.state.products.length === 0) {
                     this.showInputs = false;
                 }
@@ -182,9 +199,39 @@ export default {
             }
 
         },
+
         clearInputs() {
             this.state.products = [];
         },
+        async fetchProducts() {
+            console.log('Fetching products...');
+            try {
+                const response = await axios.get('/products', {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Accept": "application/json"
+                    }
+                });
+                return response.data;
+                console.log(response.data);
+            } catch (error) {
+                console.error('Error fetching products: ', error);
+                return []; // Возвращаем пустой массив в случае ошибки
+            }
+        },
+        // async fetchProducts() {
+        //     console.log('Fetching products...');
+        //     await axios.get('/products', {
+        //         headers: {
+        //             "X-Requested-With": "XMLHttpRequest",
+        //             "Accept": "application/json"
+        //         }
+        //     }).then(response => {
+        //         return response.data;
+        //     }).catch(error => {
+        //         console.log(error);
+        //     });
+        // },
     }
 }
 </script>

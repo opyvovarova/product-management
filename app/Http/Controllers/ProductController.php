@@ -9,30 +9,41 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::all();
+        $products = Product::latest()->get();
+
+        if ($request->header('Accept') === 'application/json') {
+            return response()->json($products);
+        }
+
         return Inertia::render('Products/Index',
             ['products' => $products]
         );
+
     }
 
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
+        $request->validate([
             'name' => 'required|string',
             'quantity'=> 'required|integer',
             'price' => 'required|numeric'
         ]);
 
-        Product::create($validatedData);
+        Product::create([
+            'name' => $request->name,
+            'quantity' => $request->quantity,
+            'price' => $request->price
+        ]);
 
-        return redirect()->route('products.index');
+        return redirect()->route('products.index')->with('message', 'Product created successfully');
+
     }
 
     public function update(Request $request, $id)
     {
-        $product = Product::findOfFail($id);
+        $product = Product::findOrFail($id);
 
         $validatedData = $request->validate([
             'name' => 'required|string',
