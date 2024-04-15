@@ -185,20 +185,36 @@ export default {
             }
             return isValid;
         },
-
-        async cancelProduct(productId) {
+        async cancelProduct() {
             try {
-                await axios.delete(`${this.apiUrl}/products/${productId}`);
-                await this.fetchProducts();
-                if (this.state.products.length === 0) {
-                    this.showInputs = false;
+                for (const product of this.newProducts) {
+                    await axios.delete(`${this.apiUrl}/products/${product.id}`);
                 }
 
-            } catch (error) {
-                console.error('Error deleting product: ', error);
-            }
+                this.newProducts = [];
 
+                this.saveSuccess = false;
+                this.validationError = false;
+
+                this.showInputs = false;
+            } catch (error) {
+                console.error('Ошибка при отмене продукта: ', error);
+            }
         },
+
+        // async cancelProduct() {
+        //     try {
+        //         await axios.delete(`${this.apiUrl}/products/${productId}`);
+        //         await this.fetchProducts();
+        //         if (this.state.products.length === 0) {
+        //             this.showInputs = false;
+        //         }
+        //
+        //     } catch (error) {
+        //         console.error('Error deleting product: ', error);
+        //     }
+        //
+        // },
 
         clearInputs() {
             this.state.products = [];
@@ -216,22 +232,9 @@ export default {
                 console.log(response.data);
             } catch (error) {
                 console.error('Error fetching products: ', error);
-                return []; // Возвращаем пустой массив в случае ошибки
+                return [];
             }
         },
-        // async fetchProducts() {
-        //     console.log('Fetching products...');
-        //     await axios.get('/products', {
-        //         headers: {
-        //             "X-Requested-With": "XMLHttpRequest",
-        //             "Accept": "application/json"
-        //         }
-        //     }).then(response => {
-        //         return response.data;
-        //     }).catch(error => {
-        //         console.log(error);
-        //     });
-        // },
     }
 }
 </script>
